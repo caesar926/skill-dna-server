@@ -26,7 +26,7 @@ app.get('/auth/callback', async (req, res) => {
     }),
   })
   const tokenData = await tokenResponse.json()
-  res.redirect(`http://localhost:5173/#token=${tokenData.access_token}&refresh=${tokenData.refresh_token}`)
+  res.redirect(`https://skill-dna-kappa.vercel.app/#token=${tokenData.access_token}&refresh=${tokenData.refresh_token}`)
 })
 
 app.get('/auth/refresh', async (req, res) => {
