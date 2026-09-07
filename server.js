@@ -1,4 +1,9 @@
+import 'dotenv/config'
 import session from 'express-session'
+
+require('dotenv').config()
+const express = require('express')
+const app = express()
 
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -12,9 +17,8 @@ app.use(session({
   },
 }))
 
-require('dotenv').config()
-const express = require('express')
-const app = express()
+
+
 
 
 app.get('/', (req, res) => res.send('server is live'))
@@ -40,7 +44,19 @@ app.get('/auth/callback', async (req, res) => {
     }),
   })
   const tokenData = await tokenResponse.json()
-  res.redirect(`https://skill-dna-kappa.vercel.app/#token=${tokenData.access_token}&refresh=${tokenData.refresh_token}`)
+
+  req.session.accessToken = tokenData.access_token
+  req.session.refreshToken = tokenData.refresh_token
+
+  res.redirect('https://skill-dna-kappa.vercel.app/')
+})
+
+app.get('/auth/me', (req, res) => {
+  if (req.session.accessToken) {
+    res.json({ loggedIn :true })
+  } else {
+    res.json({ loggedIn:false })
+  }
 })
 
 app.get('/auth/refresh', async (req, res) => {
@@ -58,3 +74,8 @@ app.get('/auth/refresh', async (req, res) => {
   const data = await response.json()
   res.json(data)
 })
+
+app.use(cors({
+  origin: 'https://skill-dna-kappa.vercel.app',
+  credentials: true,
+}))
