@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import session from 'express-session'
 
-require('dotenv').config()
+import 'dotenv/config'
 const express = require('express')
 const app = express()
 
