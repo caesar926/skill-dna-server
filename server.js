@@ -1,3 +1,17 @@
+import session from 'express-session'
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'lax',
+    maxAge: 1000 * 60 * 60 * 8, // 8 hours, matching GitHub's token lifetime
+  },
+}))
+
 require('dotenv').config()
 const express = require('express')
 const app = express()
