@@ -1,8 +1,7 @@
 import 'dotenv/config'
 import session from 'express-session'
-
-import 'dotenv/config'
-const express = require('express')
+import express from 'express'
+import cors from 'cors'
 const app = express()
 
 app.use(session({
@@ -17,10 +16,10 @@ app.use(session({
   },
 }))
 
-
-
-
-
+app.use(cors({
+  origin: 'https://skill-dna-kappa.vercel.app',
+  credentials: true,
+}))
 app.get('/', (req, res) => res.send('server is live'))
 
 app.listen(3001, () =>
@@ -74,8 +73,3 @@ app.get('/auth/refresh', async (req, res) => {
   const data = await response.json()
   res.json(data)
 })
-
-app.use(cors({
-  origin: 'https://skill-dna-kappa.vercel.app',
-  credentials: true,
-}))
