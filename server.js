@@ -5,7 +5,7 @@ import express from 'express'
 import cors from 'cors'
 
 const app = express()
-
+app.set('trust proxy', 1)
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
