@@ -115,6 +115,14 @@ app.get('/auth/refresh', async (req, res) => {
 
 const graphqlQuery = `query($username: String!) {
   user(login: $username) {
+    avatarUrl
+    bio
+    followers {
+     totalCount
+    }
+    repositories(ownerAffiliations: OWNER) { totalCount 
+    } 
+  
     contributionsCollection {
       totalCommitContributions
       totalPullRequestContributions
@@ -123,6 +131,7 @@ const graphqlQuery = `query($username: String!) {
         weeks { contributionDays { date contributionCount } }
       }
     }
+
     pinnedItems(first: 6, types: REPOSITORY) {
       nodes {
         ... on Repository {
