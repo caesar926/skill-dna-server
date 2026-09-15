@@ -310,7 +310,7 @@ app.get('/api/profile/claim', async (req, res) => {
   },
   fetched_at: new Date().toISOString(),
 }
-console.log(languages)
+console.log(totalLanguages)
 
   const { data: saved, error: saveError } = await supabase
     .from('profiles')
