@@ -4,7 +4,7 @@ import session from 'express-session'
 import express from 'express'
 import cors from 'cors'
 
-/*const app = express()
+const app = express()
 app.set('trust proxy', 1)
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -31,7 +31,7 @@ app.use(session({
 }
 )*/
 
-app.use(cors({
+/*app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,
 }))
@@ -214,7 +214,7 @@ async function getTotalStars(username, accessToken) {
 
     if (data.errors) {
       console.error('getTotalStars GraphQL error:', data.errors)
-      return total // bail out, return whatever we'd accumulated so far
+      return total 
     }
 
     const repoData = data.data?.user?.repositories
@@ -231,7 +231,7 @@ async function getTotalStars(username, accessToken) {
   return total
 }
 
-/*app.get('/api/profile/claim', async (req, res) => {
+app.get('/api/profile/claim', async (req, res) => {
   const { githubUsername, githubId, accessToken } = req.session
 
   if (!githubUsername || !githubId || !accessToken) {
@@ -250,7 +250,7 @@ async function getTotalStars(username, accessToken) {
 
   if (isFresh) {
     return res.json(existing)
-  }*/
+  }
 
   const gqlResponse = await fetch('https://api.github.com/graphql', {
     method: 'POST',
@@ -313,5 +313,4 @@ if (fetchErrror){
   return res.json(existing)
 
 
-})
-*/
+})*/
