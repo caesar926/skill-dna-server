@@ -132,7 +132,7 @@ const graphqlQuery = `query($username: String!) {
           login
         }
       }
-      pullRequestContributions {
+      contributions {
         totalCount
       }
      }
