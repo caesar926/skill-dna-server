@@ -294,17 +294,22 @@ app.get('/api/profile/claim', async (req, res) => {
   }
 
   const userData = gqlResult.data?.user
-  const totalStars = await getTotalStars(githubUsername, accessToken)
+  const repoSignals = await getRepoSignals (githubUsername, accessToken)
 
-  const row = {
-    github_username: githubUsername,
-    github_id: githubId,
-    total_stars: totalStars,
-    total_commits: userData?.contributionsCollection?.totalCommitContributions || 0,
-    total_prs: userData?.contributionsCollection?.totalPullRequestContributions || 0,
-    data: userData ?? {},
-    fetched_at: new Date().toISOString(),
-  }
+ const row = {
+  github_username: githubUsername,
+  github_id: githubId,
+  total_stars: repoSignals.stars,
+  total_commits: userData?.contributionsCollection?.totalCommitContributions || 0,
+  total_prs: userData?.contributionsCollection?.totalPullRequestContributions || 0,
+  data: {
+    ...userData,
+    totalForks: repoSignals.forks,
+    totalLanguages: repoSignals.languages,
+    describedRepoCount: repoSignals.descriptions,
+  },
+  fetched_at: new Date().toISOString(),
+}
 
   const { data: saved, error: saveError } = await supabase
     .from('profiles')
