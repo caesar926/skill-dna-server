@@ -4,7 +4,7 @@ import session from 'express-session'
 import express from 'express'
 import cors from 'cors'
 
-const app = express()
+/*const app = express()
 app.set('trust proxy', 1)
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -231,7 +231,7 @@ async function getTotalStars(username, accessToken) {
   return total
 }
 
-app.get('/api/profile/claim', async (req, res) => {
+/*app.get('/api/profile/claim', async (req, res) => {
   const { githubUsername, githubId, accessToken } = req.session
 
   if (!githubUsername || !githubId || !accessToken) {
@@ -250,7 +250,7 @@ app.get('/api/profile/claim', async (req, res) => {
 
   if (isFresh) {
     return res.json(existing)
-  }
+  }*/
 
   const gqlResponse = await fetch('https://api.github.com/graphql', {
     method: 'POST',
@@ -314,3 +314,4 @@ if (fetchErrror){
 
 
 })
+*/
