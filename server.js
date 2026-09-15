@@ -126,6 +126,16 @@ const graphqlQuery = `query($username: String!) {
     contributionsCollection {
       totalCommitContributions
       totalPullRequestContributions
+      pullRequestContributionsByRepository(maxRepositories: 25) {
+      repository {
+        owner {
+          login
+        }
+      }
+      pullRequestContributions {
+        totalCount
+      }
+     }
       contributionCalendar {
         totalContributions
         weeks { contributionDays { date contributionCount } }
@@ -145,6 +155,8 @@ const graphqlQuery = `query($username: String!) {
         }
       }
     }
+
+    
   }
 }`
 
@@ -170,7 +182,7 @@ app.get('/api/graphql', async (req, res) => {
   res.json(data)
 })
 
-const starsQuery = `
+const getRepoSignals = `
 query($username: String!, $after: String) {
   user(login: $username) {
     repositories(
@@ -221,34 +233,34 @@ async function getRepoSignals(username, accessToken) {
     const data = await response.json()
 
     if (data.errors) {
-  console.error('getRepoSignals GraphQL error:', data.errors)
-  return { stars, languages: [...languageSet], forks, descriptions }
-}
+      console.error('getRepoSignals GraphQL error:', data.errors)
+      return { stars, languages: [...languageSet], forks, descriptions }
+    }
 
     const repoData = data.data?.user?.repositories
     const nodes = repoData?.nodes ?? []
 
     for (const repo of nodes) {
-      stars += repo.stargazerCount ||  0
-    if (repo.primaryLanguage?.name){
-      languageSet.add(repo.primaryLanguage?.name)
-    }  
+      stars += repo.stargazerCount || 0
+      if (repo.primaryLanguage?.name) {
+        languageSet.add(repo.primaryLanguage?.name)
+      }
       forks += repo.forkCount
-    if (repo.description){
-      descriptions ++
-    } 
-      
+      if (repo.description) {
+        descriptions++
+      }
+
     }
 
     hasNextPage = repoData?.pageInfo?.hasNextPage ?? false
     cursor = repoData?.pageInfo?.endCursor ?? null
   }
-      total = {
-        stars,
-        languages: [...languageSet],
-        forks,
-        descriptions
-      }
+  total = {
+    stars,
+    languages: [...languageSet],
+    forks,
+    descriptions
+  }
 
 
   return total
@@ -294,23 +306,23 @@ app.get('/api/profile/claim', async (req, res) => {
   }
 
   const userData = gqlResult.data?.user
-  const repoSignals = await getRepoSignals (githubUsername, accessToken)
+  const repoSignals = await getRepoSignals(githubUsername, accessToken)
 
- const row = {
-  github_username: githubUsername,
-  github_id: githubId,
-  total_stars: repoSignals.stars,
-  total_commits: userData?.contributionsCollection?.totalCommitContributions || 0,
-  total_prs: userData?.contributionsCollection?.totalPullRequestContributions || 0,
-  data: {
-    ...userData,
-    totalForks: repoSignals.forks,
-    totalLanguages: repoSignals.languages,
-    describedRepoCount: repoSignals.descriptions,
-  },
-  fetched_at: new Date().toISOString(),
-}
-console.log(totalLanguages)
+  const row = {
+    github_username: githubUsername,
+    github_id: githubId,
+    total_stars: repoSignals.stars,
+    total_commits: userData?.contributionsCollection?.totalCommitContributions || 0,
+    total_prs: userData?.contributionsCollection?.totalPullRequestContributions || 0,
+    data: {
+      ...userData,
+      totalForks: repoSignals.forks,
+      totalLanguages: repoSignals.languages,
+      describedRepoCount: repoSignals.descriptions,
+    },
+    fetched_at: new Date().toISOString(),
+  }
+
 
   const { data: saved, error: saveError } = await supabase
     .from('profiles')
