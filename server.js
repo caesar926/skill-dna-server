@@ -31,7 +31,7 @@ app.use(session({
 }
 )*/
 
-/*app.use(cors({
+app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,
 }))
@@ -214,7 +214,7 @@ async function getTotalStars(username, accessToken) {
 
     if (data.errors) {
       console.error('getTotalStars GraphQL error:', data.errors)
-      return total 
+      return total // bail out, return whatever we'd accumulated so far
     }
 
     const repoData = data.data?.user?.repositories
@@ -313,4 +313,4 @@ if (fetchErrror){
   return res.json(existing)
 
 
-})*/
+})
