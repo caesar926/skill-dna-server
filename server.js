@@ -182,7 +182,7 @@ app.get('/api/graphql', async (req, res) => {
   res.json(data)
 })
 
-const getRepoSignals = `
+const starsQuery = `
 query($username: String!, $after: String) {
   user(login: $username) {
     repositories(
