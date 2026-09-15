@@ -180,6 +180,9 @@ query($username: String!, $after: String) {
     ) {
       nodes {
         stargazerCount
+        forkCount
+        description
+        primaryLanguage { name }
       }
       pageInfo {
         hasNextPage
@@ -189,10 +192,15 @@ query($username: String!, $after: String) {
   }
 }`
 
-async function getTotalStars(username, accessToken) {
-  let total = 0
+
+async function getRepoSignals(username, accessToken) {
+  let total = {}
   let cursor = null
   let hasNextPage = true
+  let stars = 0
+  let forks = 0
+  let descriptions = 0
+  const languageSet = new Set()
 
   while (hasNextPage) {
     const response = await fetch('https://api.github.com/graphql', {
@@ -213,20 +221,35 @@ async function getTotalStars(username, accessToken) {
     const data = await response.json()
 
     if (data.errors) {
-      console.error('getTotalStars GraphQL error:', data.errors)
-      return total // bail out, return whatever we'd accumulated so far
-    }
+  console.error('getRepoSignals GraphQL error:', data.errors)
+  return { stars, languages: [...languageSet], forks, descriptions }
+}
 
     const repoData = data.data?.user?.repositories
     const nodes = repoData?.nodes ?? []
 
     for (const repo of nodes) {
-      total += repo.stargazerCount || 0
+      stars += repo.stargazerCount ||  0
+    if (repo.primaryLanguage?.name){
+      languageSet.add(repo.primaryLanguage?.name)
+    }  
+      forks += repo.forkCount
+    if (repo.description){
+      descriptions ++
+    } 
+      
     }
 
     hasNextPage = repoData?.pageInfo?.hasNextPage ?? false
     cursor = repoData?.pageInfo?.endCursor ?? null
   }
+      total = {
+        stars,
+        languages: [...languageSet],
+        forks,
+        descriptions
+      }
+
 
   return total
 }
@@ -298,18 +321,18 @@ app.get('/api/profile/claim', async (req, res) => {
 })
 
 app.get('/api/profile/:username', async (req, res) => {
- const userName = req.params.username
+  const userName = req.params.username
 
- const {data: existing, error: fetchErrror} = await supabase
- .from('profiles')
- .select('*')
- .eq('github_username', userName)
- .single()
+  const { data: existing, error: fetchErrror } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('github_username', userName)
+    .single()
 
- 
-if (fetchErrror){
-  return res.status(404).json({error: "profile not claimed yet"})
-}
+
+  if (fetchErrror) {
+    return res.status(404).json({ error: "profile not claimed yet" })
+  }
   return res.json(existing)
 
 
