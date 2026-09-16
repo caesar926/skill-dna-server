@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient.js'
 import session from 'express-session'
 import express from 'express'
 import cors from 'cors'
+import { calculateScore } from './proofOfWorkScore.js'
 
 const app = express()
 app.set('trust proxy', 1)
@@ -355,3 +356,32 @@ app.get('/api/profile/:username', async (req, res) => {
 
 
 })
+
+app.get('/api/profile/:username/suggestions', async (req, res) => {
+  const userName = req.params.username
+
+  const { data: profile, error: fetchError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('github_username', userName)
+    .single()
+
+  if (!profile || fetchError) {
+    return res.status(404).json({ error: "No profile found" })
+
+  }
+
+  const result = calculateScore(profile)
+  res.json(result)
+
+  const factors = Object.entries(result)
+    .filter(([key]) => key !== 'finalScore')
+    .map(([key, value]) => ({
+      name: key,
+      score: value
+    })).filter(({score}) => score < 80 );
+    console.log('factors:', factors)
+})
+
+
+
