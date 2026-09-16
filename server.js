@@ -379,8 +379,39 @@ app.get('/api/profile/:username/suggestions', async (req, res) => {
     .map(([key, value]) => ({
       name: key,
       score: value
-    })).filter(({score}) => score < 80 );
-    console.log('factors:', factors)
+    })).filter(({ score }) => score < 80);
+  console.log('factors:', factors)
+
+  const factorContext = {
+    activityScore: {
+      total_commits: profile.total_commits,
+      total_prs: profile.total_prs
+    },
+    impactScore: {
+      total_stars: profile.total_stars,
+      followers: profile.data?.followers?.totalCount ?? 0
+    },
+    breadthScore: {
+      totalLanguages: profile.data?.totalLanguages ?? [],
+      distinctLanguageCount: profile.data?.totalLanguages?.length ?? 0
+    },
+    projectQualityScore: {
+      forks: profile.data?.totalForks ?? 0,
+      descriptionRatio: profile.data?.describedRepoCount / (profile.data?.repositories?.totalCount ?? 1) ?? 0
+    },
+    openSourceScore: {
+      externalPRs: profile.data?.contributionsCollection?.pullRequestContributionsByRepository
+        ?.filter(entry => entry.repository.owner.login !== profile.github_username)
+        .reduce((sum, entry) => sum + entry.contributions.totalCount, 0) ?? 0
+    },
+  };
+
+ const weakFactorsWithContext = factors.map(factor => ({
+  name: factor.name,
+  score: factor.score,
+  context: factorContext[factor.name]
+}));
+console.log(weakFactorsWithContext)
 })
 
 
