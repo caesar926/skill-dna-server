@@ -411,8 +411,37 @@ app.get('/api/profile/:username/suggestions', async (req, res) => {
   score: factor.score,
   context: factorContext[factor.name]
 }));
-console.log(weakFactorsWithContext)
+
+  const prompt = `You are analyzing a developer's GitHub-based profile score on Skill DNA, a platform that scores developers on five factors: coding activity/consistency, community impact, technical breadth, project quality, and open-source contribution.
+
+Below is a list of the factors where this developer scored below 80 out of 100, each with their current score and the raw GitHub signals behind that score.
+
+${JSON.stringify(weakFactorsWithContext)}
+
+For each factor in the list, write exactly one specific, actionable suggestion the developer could act on to improve that score. Base each suggestion strictly on the raw signals provided — do not invent data, assume information you weren't given, or reference factors not in the list. Keep each suggestion to one or two sentences, concrete enough to act on immediately (e.g. "Add a short description to your repositories" rather than "improve your projects").
+
+Respond with ONLY a valid JSON object and nothing else — no markdown code fences, no explanation, no text before or after it. The object must have exactly one key per factor name provided above, using the exact same camelCase spelling (e.g. "projectQualityScore"), and each value must be a single string containing that factor's suggestion.`;
 })
+
+const getAISuggestions = async (prompt) => {
+    const response = await fetch (`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, 
+      {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': process.env.GEMINI_API_KEY,
+    },
+    body: JSON.stringify({ 
+      contents: [{
+      parts: [{ text: prompt }] 
+      }] 
+    }),
+      }
+    )
+
+    const data = await response.json()
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No suggestions available"
+  }
 
 
 
