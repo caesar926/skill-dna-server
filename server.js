@@ -75,7 +75,6 @@ app.get('/auth/callback', async (req, res) => {
 
   res.redirect(process.env.FRONTEND_URL)
 
-  console.log('tokenData:', tokenData)
 })
 
 app.get('/auth/me', (req, res) => {
@@ -379,7 +378,7 @@ app.get('/api/profile/:username/suggestions', async (req, res) => {
       name: key,
       score: value
     })).filter(({ score }) => score < 80);
-  console.log('factors:', factors)
+
 
   const factorContext = {
     activityScore: {
@@ -422,7 +421,6 @@ For each factor in the list, write exactly one specific, actionable suggestion t
 Respond with ONLY a valid JSON object and nothing else — no markdown code fences, no explanation, no text before or after it. The object must have exactly one key per factor name provided above, using the exact same camelCase spelling (e.g. "projectQualityScore"), and each value must be a single string containing that factor's suggestion.`;
 
   const getAISuggestions = async (prompt) => {
-     console.log(process.env.GEMINI_API_KEY) 
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
       {
@@ -440,19 +438,17 @@ Respond with ONLY a valid JSON object and nothing else — no markdown code fenc
     )
 
     const data = await response.json()
-    console.log('Gemini raw response:', data)
     return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No suggestions available"
 
   }
    
   try {
         const text = await getAISuggestions(prompt)
-        console.log(text)
-        const suggestions = JSON.parse(text)
+        const suggestions = JSON.parse(text.replace(/```json|```/g, '').trim())
         res.json(suggestions)
       } catch (err) {
         res.status(500).json({ error: "Failed to generate suggestions" })
-        console.log(err)
+  
       }
 })
 
