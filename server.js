@@ -266,6 +266,27 @@ async function getRepoSignals(username, accessToken) {
   return total
 }
 
+  const getAISuggestions = async (prompt) => {
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': process.env.GEMINI_API_KEY,
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }]
+        }),
+      }
+    )
+
+    const data = await response.json()
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No suggestions available"
+
+  }
 app.get('/api/profile/claim', async (req, res) => {
   const { githubUsername, githubId, accessToken } = req.session
 
@@ -419,28 +440,6 @@ ${JSON.stringify(weakFactorsWithContext)}
 For each factor in the list, write exactly one specific, actionable suggestion the developer could act on to improve that score. Base each suggestion strictly on the raw signals provided — do not invent data, assume information you weren't given, or reference factors not in the list. Keep each suggestion to one or two sentences, concrete enough to act on immediately (e.g. "Add a short description to your repositories" rather than "improve your projects").
 
 Respond with ONLY a valid JSON object and nothing else — no markdown code fences, no explanation, no text before or after it. The object must have exactly one key per factor name provided above, using the exact same camelCase spelling (e.g. "projectQualityScore"), and each value must be a single string containing that factor's suggestion.`;
-
-  const getAISuggestions = async (prompt) => {
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': process.env.GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }]
-        }),
-      }
-    )
-
-    const data = await response.json()
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No suggestions available"
-
-  }
    
   try {
         const text = await getAISuggestions(prompt)
