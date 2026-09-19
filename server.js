@@ -159,6 +159,52 @@ const graphqlQuery = `query($username: String!) {
     
   }
 }`
+app.get('/api/public/profile/:username', async (req, res) => {
+  const userName = req.params.username
+
+  const response = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.GITHUB_PAT}`,
+    },
+    body: JSON.stringify({
+      query: graphqlQuery,
+      variables: { username: userName },
+    }),
+  })
+
+  const data = await response.json()
+  if (data.errors) {
+    return res.status(404).json({ error: "User not found" })
+  }
+
+  try {
+    const repoSignals = await getRepoSignals(userName, process.env.GITHUB_PAT)
+    const userData = data.data.user
+
+    const frontData = {
+      github_id: githubId,
+      github_username: userName,
+      total_stars: repoSignals.stars,
+      total_commits: userData?.contributionsCollection?.totalCommitContributions || 0,
+      total_prs: userData?.contributionsCollection?.totalPullRequestContributions || 0,
+      data: {
+        ...userData,
+        totalForks: repoSignals.forks,
+        totalLanguages: Object.keys(repoSignals.languageCounts),
+        languageCounts: repoSignals.languageCounts,
+        describedRepoCount: repoSignals.descriptions,
+      },
+
+    }
+    res.json(frontData)
+  } catch (error) {
+    console.error('Error fetching user data:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+
+})
 
 app.get('/api/graphql', async (req, res) => {
   const accessToken = req.session.accessToken
@@ -212,7 +258,7 @@ async function getRepoSignals(username, accessToken) {
   let stars = 0
   let forks = 0
   let descriptions = 0
-  const languageSet = new Set()
+  const languageCounts = {}
 
   while (hasNextPage) {
     const response = await fetch('https://api.github.com/graphql', {
@@ -234,7 +280,7 @@ async function getRepoSignals(username, accessToken) {
 
     if (data.errors) {
       console.error('getRepoSignals GraphQL error:', data.errors)
-      return { stars, languages: [...languageSet], forks, descriptions }
+      return { stars, languageCounts, forks, descriptions }
     }
 
     const repoData = data.data?.user?.repositories
@@ -242,8 +288,11 @@ async function getRepoSignals(username, accessToken) {
 
     for (const repo of nodes) {
       stars += repo.stargazerCount || 0
-      if (repo.primaryLanguage?.name) {
-        languageSet.add(repo.primaryLanguage?.name)
+     
+        const language = repo.primaryLanguage?.name
+
+        if (language) {
+          languageCounts[language] = (languageCounts[language] || 0) + 1
       }
       forks += repo.forkCount
       if (repo.description) {
@@ -257,7 +306,7 @@ async function getRepoSignals(username, accessToken) {
   }
   total = {
     stars,
-    languages: [...languageSet],
+    languageCounts,
     forks,
     descriptions
   }
@@ -266,27 +315,27 @@ async function getRepoSignals(username, accessToken) {
   return total
 }
 
-  const getAISuggestions = async (prompt) => {
+const getAISuggestions = async (prompt) => {
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': process.env.GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }]
-        }),
-      }
-    )
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': process.env.GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: prompt }]
+        }]
+      }),
+    }
+  )
 
-    const data = await response.json()
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No suggestions available"
+  const data = await response.json()
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || "No suggestions available"
 
-  }
+}
 app.get('/api/profile/claim', async (req, res) => {
   const { githubUsername, githubId, accessToken } = req.session
 
@@ -331,14 +380,15 @@ app.get('/api/profile/claim', async (req, res) => {
 
   const row = {
     github_username: githubUsername,
-    github_id: githubId,
+ 
     total_stars: repoSignals.stars,
     total_commits: userData?.contributionsCollection?.totalCommitContributions || 0,
     total_prs: userData?.contributionsCollection?.totalPullRequestContributions || 0,
     data: {
       ...userData,
       totalForks: repoSignals.forks,
-      totalLanguages: repoSignals.languages,
+      totalLanguages: Object.keys(repoSignals.languageCounts),
+      languageCounts: repoSignals.languageCounts,
       describedRepoCount: repoSignals.descriptions,
     },
     fetched_at: new Date().toISOString(),
@@ -368,13 +418,10 @@ app.get('/api/profile/:username', async (req, res) => {
     .eq('github_username', userName)
     .single()
 
-
   if (fetchErrror) {
     return res.status(404).json({ error: "profile not claimed yet" })
   }
   return res.json(existing)
-
-
 })
 
 app.get('/api/profile/:username/suggestions', async (req, res) => {
@@ -440,20 +487,13 @@ ${JSON.stringify(weakFactorsWithContext)}
 For each factor in the list, write exactly one specific, actionable suggestion the developer could act on to improve that score. Base each suggestion strictly on the raw signals provided — do not invent data, assume information you weren't given, or reference factors not in the list. Keep each suggestion to one or two sentences, concrete enough to act on immediately (e.g. "Add a short description to your repositories" rather than "improve your projects").
 
 Respond with ONLY a valid JSON object and nothing else — no markdown code fences, no explanation, no text before or after it. The object must have exactly one key per factor name provided above, using the exact same camelCase spelling (e.g. "projectQualityScore"), and each value must be a single string containing that factor's suggestion.`;
-   
+
   try {
-        const text = await getAISuggestions(prompt)
-        const suggestions = JSON.parse(text.replace(/```json|```/g, '').trim())
-        res.json(suggestions)
-      } catch (err) {
-        res.status(500).json({ error: "Failed to generate suggestions" })
-  
-      }
+    const text = await getAISuggestions(prompt)
+    const suggestions = JSON.parse(text.replace(/```json|```/g, '').trim())
+    res.json(suggestions)
+  } catch (err) {
+    res.status(500).json({ error: "Failed to generate suggestions" })
+
+  }
 })
-
-
-
-
-
-
-
