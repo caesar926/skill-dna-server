@@ -184,7 +184,6 @@ app.get('/api/public/profile/:username', async (req, res) => {
     const userData = data.data.user
 
     const frontData = {
-      github_id: githubId,
       github_username: userName,
       total_stars: repoSignals.stars,
       total_commits: userData?.contributionsCollection?.totalCommitContributions || 0,
