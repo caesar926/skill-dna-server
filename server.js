@@ -379,7 +379,7 @@ app.get('/api/profile/claim', async (req, res) => {
 
   const row = {
     github_username: githubUsername,
- 
+    github_id: githubId,
     total_stars: repoSignals.stars,
     total_commits: userData?.contributionsCollection?.totalCommitContributions || 0,
     total_prs: userData?.contributionsCollection?.totalPullRequestContributions || 0,
