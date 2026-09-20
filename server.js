@@ -179,6 +179,11 @@ app.get('/api/public/profile/:username', async (req, res) => {
     return res.status(404).json({ error: "User not found" })
   }
 
+  if (!data.data?.user) {
+  console.error('Unexpected GitHub response:', data)
+  return res.status(502).json({ error: 'Failed to fetch GitHub data' })
+}
+
   try {
     const repoSignals = await getRepoSignals(userName, process.env.GITHUB_PAT)
     const userData = data.data.user
@@ -205,28 +210,6 @@ app.get('/api/public/profile/:username', async (req, res) => {
 
 })
 
-app.get('/api/graphql', async (req, res) => {
-  const accessToken = req.session.accessToken
-  if (!accessToken) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-
-  const response = await fetch('https://api.github.com/graphql', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      query: graphqlQuery,
-      variables: { username: req.query.username },
-    }),
-  })
-
-  const data = await response.json()
-  res.json(data)
-})
-
 const starsQuery = `
 query($username: String!, $after: String) {
   user(login: $username) {
@@ -251,7 +234,7 @@ query($username: String!, $after: String) {
 
 
 async function getRepoSignals(username, accessToken) {
-  let total = {}
+  let total 
   let cursor = null
   let hasNextPage = true
   let stars = 0
