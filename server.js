@@ -102,7 +102,7 @@ app.get('/auth/refresh', async (req, res) => {
     }),
   })
   const data = await response.json()
-
+  console.log('Raw GitHub response:', JSON.stringify(data))
   if (data.error) {
     return res.status(401).json({ error: data.error })
   }
