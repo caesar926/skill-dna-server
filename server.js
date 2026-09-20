@@ -161,8 +161,8 @@ const graphqlQuery = `query($username: String!) {
 }`
 app.get('/api/public/profile/:username', async (req, res) => {
   const userName = req.params.username
-
-  const response = await fetch('https://api.github.com/graphql', {
+  try{
+    const response = await fetch('https://api.github.com/graphql', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -175,16 +175,12 @@ app.get('/api/public/profile/:username', async (req, res) => {
   })
 
   const data = await response.json()
-  if (data.errors) {
-    return res.status(404).json({ error: "User not found" })
-  }
 
   if (!data.data?.user) {
   console.error('Unexpected GitHub response:', data)
   return res.status(502).json({ error: 'Failed to fetch GitHub data' })
 }
 
-  try {
     const repoSignals = await getRepoSignals(userName, process.env.GITHUB_PAT)
     const userData = data.data.user
 
@@ -203,10 +199,12 @@ app.get('/api/public/profile/:username', async (req, res) => {
 
     }
     res.json(frontData)
-  } catch (error) {
+
+  } catch (error){
     console.error('Error fetching user data:', error)
-    res.status(500).json({ error: 'Internal server error' })
+  res.status(500).json({ error: 'Internal server error' })
   }
+  
 
 })
 
