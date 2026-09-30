@@ -52,7 +52,7 @@ app.listen(3001, () =>
 
 app.get('/auth/login', (req, res) => {
   const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&scope=read:user&prompt=consent&redirect_uri=${encodeURIComponent(process.env.GITHUB_CALLBACK_URL)}`
-  console.log(redirectUrl)
+
   res.redirect(redirectUrl)
 })
 
@@ -87,7 +87,8 @@ app.get('/auth/callback', async (req, res) => {
 
 app.get('/auth/me', (req, res) => {
   if (req.session.accessToken) {
-    res.json({ loggedIn: true })
+    res.json({loggedIn: true, username: req.session.githubUsername})
+    
   } else {
     res.json({ loggedIn: false })
   }
@@ -268,7 +269,7 @@ async function getRepoSignals(username, accessToken) {
 
     if (data.errors) {
       console.error('getRepoSignals GraphQL error:', data.errors)
-      return { stars, languageCounts, forks, descriptions }
+      throw new Error('GitHub API error while fetching repo signals')
     }
 
     const repoData = data.data?.user?.repositories
@@ -364,37 +365,42 @@ app.get('/api/profile/claim', async (req, res) => {
   }
 
   const userData = gqlResult.data?.user
-  const repoSignals = await getRepoSignals(githubUsername, accessToken)
 
-  const row = {
-    github_username: githubUsername,
-    github_id: githubId,
-    total_stars: repoSignals.stars,
-    total_commits: userData?.contributionsCollection?.totalCommitContributions || 0,
-    total_prs: userData?.contributionsCollection?.totalPullRequestContributions || 0,
-    data: {
-      ...userData,
-      totalForks: repoSignals.forks,
-      totalLanguages: Object.keys(repoSignals.languageCounts),
-      languageCounts: repoSignals.languageCounts,
-      describedRepoCount: repoSignals.descriptions,
-    },
-    fetched_at: new Date().toISOString(),
+  try {
+    const repoSignals = await getRepoSignals(githubUsername, accessToken)
+
+    const row = {
+      github_username: githubUsername,
+      github_id: githubId,
+      total_stars: repoSignals.stars,
+      total_commits: userData?.contributionsCollection?.totalCommitContributions || 0,
+      total_prs: userData?.contributionsCollection?.totalPullRequestContributions || 0,
+      data: {
+        ...userData,
+        totalForks: repoSignals.forks,
+        totalLanguages: Object.keys(repoSignals.languageCounts),
+        languageCounts: repoSignals.languageCounts,
+        describedRepoCount: repoSignals.descriptions,
+      },
+      fetched_at: new Date().toISOString(),
+    }
+
+    const { data: saved, error: saveError } = await supabase
+      .from('profiles')
+      .upsert(row, { onConflict: 'github_id' })
+      .select()
+      .single()
+
+    if (saveError) {
+      console.error('Supabase upsert error:', saveError)
+      return res.status(500).json({ error: 'Failed to save profile' })
+    }
+
+    res.json(saved)
+  } catch (error) {
+    console.error('Claim route repo-signals error:', error)
+    return res.status(502).json({ error: 'Failed to fetch GitHub data. Please try again.' })
   }
-
-
-  const { data: saved, error: saveError } = await supabase
-    .from('profiles')
-    .upsert(row, { onConflict: 'github_id' })
-    .select()
-    .single()
-
-  if (saveError) {
-    console.error('Supabase upsert error:', saveError)
-    return res.status(500).json({ error: 'Failed to save profile' })
-  }
-
-  res.json(saved)
 })
 
 app.get('/api/profile/:username', async (req, res) => {
@@ -423,7 +429,6 @@ app.get('/api/profile/:username/suggestions', async (req, res) => {
 
   if (!profile || fetchError) {
     return res.status(404).json({ error: "No profile found" })
-
   }
 
   const result = calculateScore(profile)
